@@ -1,0 +1,57 @@
+{
+  "users": [
+    {
+      "_id": "mph3cm6g244grww5ow6",
+      "fullName": "kajal dwivedi",
+      "email": "kajaldwivedi10f30271.17@gmail.com",
+      "password": "$2a$10$OfLOgj/18VT6f4xbBG/DUe6.uIao1HzuHzT0HLncWwrKHNmdz0ygC",
+      "role": "user",
+      "location": "jalandhar",
+      "createdAt": "2026-05-22T15:45:20.969Z"
+    }
+  ],
+  "pickups": [
+    {
+      "_id": "mph3db2wfarfj5uqdqq",
+      "user": "mph3cm6g244grww5ow6",
+      "wasteType": "plastic",
+      "pickupAddress": "jrc",
+      "preferredDate": "2026-05-28",
+      "description": "",
+      "status": "pending",
+      "assignedVolunteer": null,
+      "createdAt": "2026-05-22T15:45:53.240Z"
+    },
+    {
+      "_id": "mph3dza6t129l5jbfss",
+      "user": "mph3cm6g244grww5ow6",
+      "wasteType": "paper",
+      "pickupAddress": "jrc",
+      "preferredDate": "2026-05-28",
+      "description": "dd",
+      "status": "pending",
+      "assignedVolunteer": null,
+      "createdAt": "2026-05-22T15:46:24.606Z"
+    },
+    {
+      "_id": "mph3dzyqg7oqr1z2n07",
+      "user": "mph3cm6g244grww5ow6",
+      "wasteType": "paper",
+      "pickupAddress": "jrc",
+      "preferredDate": "2026-05-28",
+      "description": "dd",
+      "status": "pending",
+      "assignedVolunteer": null,
+      "createdAt": "2026-05-22T15:46:25.490Z"
+    }
+  ],
+  "statistics": {
+    "totalUsers": 1,
+    "totalVolunteers": 0,
+    "totalPickups": 3,
+    "completedPickups": 0,
+    "totalWasteRecycled": 0,
+    "carbonFootprintSaved": 0,
+    "activeUsers": 0
+  }
+}
