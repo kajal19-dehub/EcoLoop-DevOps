@@ -9,8 +9,8 @@ import { Router } from '@angular/router';
 })
 export class ApiService {
   private baseUrl = 'https://ecoloop-devops-production.up.railway.app/api';
-  private tokenKey = 'ecoloop_token';
-  private refreshTokenKey = 'ecoloop_refresh_token';
+private tokenKey = 'accessToken';
+private refreshTokenKey = 'refreshToken';
   private userKey = 'ecoloop_user';
 
   constructor(
@@ -120,27 +120,26 @@ export class ApiService {
 
   // Token management
   private setTokens(tokens: any): void {
-    localStorage.setItem(this.tokenKey, tokens.access);
-    if (tokens.refresh) {
-      localStorage.setItem(this.refreshTokenKey, tokens.refresh);
+    localStorage.setItem(this.tokenKey, tokens.accessToken);
+    if (tokens.refreshToken) {
+      localStorage.setItem(this.refreshTokenKey, tokens.refreshToken);
     }
   }
 
   private setUser(user: any): void {
     localStorage.setItem(this.userKey, JSON.stringify(user));
   }
-
+  getToken(): string | null {
+    return localStorage.getItem(this.tokenKey);
+  }
   getAuthHeaders(): HttpHeaders {
-    const token = localStorage.getItem(this.tokenKey);
+    const token = this.getToken();
     return new HttpHeaders({
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
     });
   }
 
-  getToken(): string | null {
-    return localStorage.getItem(this.tokenKey);
-  }
 
   getUser(): any {
     const user = localStorage.getItem(this.userKey);
