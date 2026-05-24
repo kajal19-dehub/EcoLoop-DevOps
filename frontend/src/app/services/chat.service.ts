@@ -8,7 +8,7 @@ import { AuthService } from './auth.service';
   providedIn: 'root'
 })
 export class ChatService {
-  private apiUrl = 'https://ecoloop-devops-production.up.railway.app';
+  private apiUrl = 'https://ecoloop-devops-production.up.railway.app/api/chat';
 
   constructor(
     private http: HttpClient,
