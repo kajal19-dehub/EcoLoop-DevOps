@@ -1,0 +1,149 @@
+<div class="loading-screen" *ngIf="!isAppReady">
+  <div class="loader">
+    <div class="leaf-loader"><i class="fa-solid fa-seedling"></i></div>
+    <h2>EcoLoop</h2>
+    <p>Preparing your pickup workspace...</p>
+  </div>
+</div>
+
+<div class="app-shell" [class.sidebar-open]="showMobileMenu">
+  <header class="top-brand-bar">
+    <button class="menu-btn" (click)="toggleMobileMenu()" aria-label="Open sidebar">
+      <i class="fas fa-bars"></i>
+    </button>
+    <div class="top-logo" routerLink="/">
+      <span class="logo-mark"><i class="fa-solid fa-recycle"></i></span>
+      <span class="logo-text">Eco<span class="highlight">Loop</span></span>
+    </div>
+    <div class="top-quote">
+      <span class="quote-image" aria-hidden="true"></span>
+      <p>Waste sorted today becomes cleaner streets tomorrow.</p>
+    </div>
+    <div class="top-notification-wrap" *ngIf="isLoggedIn">
+      <button class="top-notification" type="button" (click)="toggleNotifications()" aria-label="Open notifications">
+        <i class="fas fa-bell"></i>
+        <strong *ngIf="unreadNotifications > 0">{{ unreadNotifications }}</strong>
+      </button>
+
+      <div class="top-popover" *ngIf="showNotifications">
+        <div class="popover-header">
+          <h3>Notifications</h3>
+          <span>{{ unreadNotifications }} new</span>
+        </div>
+        <div class="notification-item" *ngFor="let notif of notifications">
+          <div class="notif-icon" [class]="notif.type">
+            <i class="fas" [ngClass]="getNotifIcon(notif.type)"></i>
+          </div>
+          <div>
+            <p class="notif-title">{{ notif.title }}</p>
+            <p class="notif-message">{{ notif.message }}</p>
+          </div>
+        </div>
+        <div class="empty-state" *ngIf="notifications.length === 0">No new activity yet</div>
+      </div>
+    </div>
+    <button class="top-theme" type="button" (click)="toggleTheme()" aria-label="Toggle theme">
+      <i class="fa-solid" [ngClass]="isDarkTheme ? 'fa-sun' : 'fa-moon'"></i>
+    </button>
+  </header>
+
+  
+
+  <aside class="sidebar">
+    <div class="sidebar-brand" routerLink="/">
+      <span class="logo-mark"><i class="fa-solid fa-recycle"></i></span>
+      <span class="logo-text">Eco<span class="highlight">Loop</span></span>
+    </div>
+
+    <div class="sidebar-user" *ngIf="isLoggedIn">
+      <div class="user-avatar">
+        <span>{{ user?.avatar || (user?.fullName?.charAt(0) | uppercase) }}</span>
+      </div>
+      <div>
+        <strong>{{ user?.fullName }}</strong>
+        <span class="role-badge" [class]="user?.role">{{ user?.role | titlecase }}</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav" aria-label="Primary navigation">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+        <i class="fas fa-leaf"></i>
+        <span>Overview</span>
+      </a>
+      <a routerLink="/dashboard" routerLinkActive="active" *ngIf="isLoggedIn">
+        <i class="fas fa-th-large"></i>
+        <span>Dashboard</span>
+      </a>
+      <a routerLink="/pickups" routerLinkActive="active" *ngIf="isLoggedIn">
+        <i class="fas fa-truck"></i>
+        <span>Pickups</span>
+      </a>
+      <a routerLink="/create-pickup" routerLinkActive="active" *ngIf="isLoggedIn && (userRole === 'user' || userRole === 'admin')">
+        <i class="fas fa-plus-circle"></i>
+        <span>{{ userRole === 'admin' ? 'Create Pickup' : 'New Request' }}</span>
+      </a>
+      <a routerLink="/dashboard" fragment="team-chat" *ngIf="isLoggedIn">
+        <i class="fas fa-comments"></i>
+        <span>Team Chat</span>
+      </a>
+      <a routerLink="/about" routerLinkActive="active">
+        <i class="fas fa-info-circle"></i>
+        <span>About</span>
+      </a>
+      <a routerLink="/articles" routerLinkActive="active">
+        <i class="fas fa-newspaper"></i>
+        <span>Articles</span>
+      </a>
+      <a routerLink="/profile" routerLinkActive="active" *ngIf="isLoggedIn">
+        <i class="fas fa-user"></i>
+        <span>Profile</span>
+      </a>
+      <a routerLink="/login" routerLinkActive="active" *ngIf="!isLoggedIn">
+        <i class="fas fa-sign-in-alt"></i>
+        <span>Login</span>
+      </a>
+      <a routerLink="/register" routerLinkActive="active" *ngIf="!isLoggedIn">
+        <i class="fas fa-user-plus"></i>
+        <span>Create Account</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <button class="theme-toggle" type="button" (click)="toggleTheme()">
+        <i class="fa-solid" [ngClass]="isDarkTheme ? 'fa-sun' : 'fa-moon'"></i>
+        <span>{{ isDarkTheme ? 'Bright Theme' : 'Dark Theme' }}</span>
+      </button>
+      <button class="logout-link" *ngIf="isLoggedIn" (click)="logout()" type="button">
+        <i class="fas fa-sign-out-alt"></i>
+        <span>Logout</span>
+      </button>
+    </div>
+  </aside>
+
+  <div class="overlay" *ngIf="showMobileMenu"></div>
+
+  <div class="content-shell">
+    <main class="main-content">
+      <router-outlet />
+    </main>
+
+    <footer class="footer">
+      <div class="footer-content">
+        <div class="footer-brand">
+          <span class="logo-mark"><i class="fa-solid fa-recycle"></i></span>
+          <h3>EcoLoop</h3>
+          <p>Waste pickup coordination for homes, volunteers, and recycling teams.</p>
+        </div>
+        <div class="footer-links">
+          <a routerLink="/">Overview</a>
+          <a routerLink="/login" *ngIf="!isLoggedIn">Login</a>
+          <a routerLink="/register" *ngIf="!isLoggedIn">Create account</a>
+          <a routerLink="/pickups" *ngIf="isLoggedIn">Pickup board</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 EcoLoop. Built for cleaner neighborhoods.</p>
+      </div>
+    </footer>
+  </div>
+</div>

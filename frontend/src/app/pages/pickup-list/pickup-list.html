@@ -1,0 +1,180 @@
+<section class="pickup-list-container">
+  <div class="header-section">
+    <div>
+      <span class="eyebrow">Pickup board</span>
+      <h1>Requests and assignments</h1>
+      <p>Filter requests, review details, and move pickups through the workflow.</p>
+    </div>
+    <button class="btn-create" *ngIf="userRole === 'user' || userRole === 'admin'" routerLink="/create-pickup">
+      <i class="fa-solid fa-plus"></i>
+      {{ userRole === 'admin' ? 'Create Pickup' : 'New Request' }}
+    </button>
+  </div>
+
+  <div class="points-panel" *ngIf="userRole === 'volunteer'">
+    <div>
+      <span>Volunteer points</span>
+      <strong>{{ volunteerPoints }}</strong>
+    </div>
+    <p>Earn 25 points for each completed pickup assigned to you.</p>
+  </div>
+
+  <div class="alert alert-success" *ngIf="actionMessage">{{ actionMessage }}</div>
+  <div class="alert alert-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+  <div class="summary-row">
+    <button class="summary-item" [class.active]="statusFilter === 'all'" (click)="statusFilter = 'all'">
+      <span>All</span>
+      <strong>{{ counts.total }}</strong>
+    </button>
+    <button class="summary-item pending" [class.active]="statusFilter === 'pending'" (click)="statusFilter = 'pending'">
+      <span>Pending</span>
+      <strong>{{ counts.pending }}</strong>
+    </button>
+    <button class="summary-item accepted" [class.active]="statusFilter === 'accepted'" (click)="statusFilter = 'accepted'">
+      <span>Accepted</span>
+      <strong>{{ counts.accepted }}</strong>
+    </button>
+    <button class="summary-item completed" [class.active]="statusFilter === 'completed'" (click)="statusFilter = 'completed'">
+      <span>Completed</span>
+      <strong>{{ counts.completed }}</strong>
+    </button>
+  </div>
+
+  <div class="toolbar">
+    <div class="search-box">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="search" [(ngModel)]="searchTerm" placeholder="Search address, waste type, resident, volunteer">
+    </div>
+    <select [(ngModel)]="statusFilter" aria-label="Filter by status">
+      <option value="all">All statuses</option>
+      <option value="pending">Pending</option>
+      <option value="accepted">Accepted</option>
+      <option value="completed">Completed</option>
+      <option value="cancelled">Cancelled</option>
+    </select>
+  </div>
+
+  <div class="pickup-grid" *ngIf="filteredPickups.length > 0">
+    <article class="pickup-card" *ngFor="let pickup of filteredPickups">
+      <div class="pickup-header">
+        <div class="waste-heading">
+          <span class="waste-icon"><i class="fa-solid" [ngClass]="getWasteIcon(pickup.wasteType)"></i></span>
+          <div>
+            <span class="waste-type">{{ pickup.wasteType | titlecase }}</span>
+            <small>{{ pickup.preferredDate | date:'mediumDate' }}</small>
+          </div>
+        </div>
+        <span class="status-badge" [ngClass]="'status-' + pickup.status">
+          {{ pickup.status | titlecase }}
+        </span>
+      </div>
+
+      <div class="pickup-details">
+        <div class="detail-row">
+          <i class="fa-solid fa-location-dot"></i>
+          <span>{{ pickup.pickupAddress }}</span>
+        </div>
+        <div class="detail-row" *ngIf="pickup.quantity">
+          <i class="fa-solid fa-scale-balanced"></i>
+          <span>Quantity: {{ pickup.quantity }}</span>
+        </div>
+        <div class="detail-row" *ngIf="pickup.contactPhone">
+          <i class="fa-solid fa-phone"></i>
+          <span>{{ pickup.contactPhone }}</span>
+        </div>
+        <div class="detail-row" *ngIf="pickup.user">
+          <i class="fa-solid fa-user"></i>
+          <span>Resident: {{ pickup.user.fullName }}</span>
+        </div>
+        <div class="detail-row" *ngIf="pickup.assignedVolunteer">
+          <i class="fa-solid fa-handshake-angle"></i>
+          <span>Volunteer: {{ pickup.assignedVolunteer.fullName || pickup.assignedVolunteer }}</span>
+        </div>
+        <p class="description" *ngIf="pickup.description">{{ pickup.description }}</p>
+        <a class="map-link" [href]="getMapsUrl(pickup)" target="_blank" rel="noopener">
+          <i class="fa-solid fa-map-location-dot"></i>
+          Open in Google Maps
+        </a>
+        <iframe
+          class="pickup-map"
+          title="Pickup location map"
+          [src]="getMapsEmbedUrl(pickup)"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+        ></iframe>
+      </div>
+
+      <div class="pickup-actions" *ngIf="userRole === 'volunteer' && pickup.status === 'pending'">
+        <button class="btn-accept" (click)="updateStatus(pickup._id, 'accepted')">
+          <i class="fa-solid fa-check"></i>
+          Accept request
+        </button>
+        <button class="btn-reject" (click)="updateStatus(pickup._id, 'rejected')">
+          <i class="fa-solid fa-xmark"></i>
+          Reject
+        </button>
+      </div>
+
+      <div class="pickup-actions" *ngIf="userRole === 'volunteer' && pickup.status === 'accepted' && getAssignedVolunteerId(pickup) === userId">
+        <button class="btn-progress" (click)="updateStatus(pickup._id, 'in-progress')">
+          <i class="fa-solid fa-route"></i>
+          Start pickup
+        </button>
+        <button class="btn-complete" (click)="updateStatus(pickup._id, 'completed')">
+          <i class="fa-solid fa-circle-check"></i>
+          Mark complete
+        </button>
+      </div>
+
+      <div class="pickup-actions" *ngIf="userRole === 'volunteer' && pickup.status === 'in-progress' && getAssignedVolunteerId(pickup) === userId">
+        <button class="btn-complete" (click)="updateStatus(pickup._id, 'completed')">
+          <i class="fa-solid fa-circle-check"></i>
+          Mark complete
+        </button>
+      </div>
+
+      <div class="report-box" *ngIf="canReport(pickup)">
+        <strong>Report pickup</strong>
+        <select [(ngModel)]="reportDrafts[pickup._id].reason">
+          <option value="">Select issue</option>
+          <option value="Volunteer did not arrive">Volunteer did not arrive</option>
+          <option value="Pickup marked incorrectly">Pickup marked incorrectly</option>
+          <option value="Wrong quantity or material">Wrong quantity or material</option>
+          <option value="Other issue">Other issue</option>
+        </select>
+        <textarea [(ngModel)]="reportDrafts[pickup._id].details" placeholder="Add details for admin review"></textarea>
+        <button type="button" (click)="reportPickup(pickup)">
+          <i class="fa-solid fa-flag"></i>
+          Submit report
+        </button>
+      </div>
+
+      <div class="chat-box" *ngIf="canChat(pickup)">
+        <div class="chat-header">
+          <strong>Pickup chat</strong>
+          <span>{{ pickup.chat?.length || 0 }} messages</span>
+        </div>
+        <div class="chat-thread" *ngIf="pickup.chat?.length">
+          <div class="chat-message" *ngFor="let message of pickup.chat">
+            <span>{{ message.senderName }} · {{ message.senderRole | titlecase }}</span>
+            <p>{{ message.message }}</p>
+          </div>
+        </div>
+        <div class="chat-compose">
+          <input [(ngModel)]="chatDrafts[pickup._id]" placeholder="Message resident, volunteer, or admin">
+          <button type="button" (click)="sendMessage(pickup)">
+            <i class="fa-solid fa-paper-plane"></i>
+          </button>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <div class="empty-state" *ngIf="filteredPickups.length === 0">
+    <i class="fa-regular fa-folder-open"></i>
+    <h3>No matching pickup requests</h3>
+    <p *ngIf="userRole === 'user'">Create your first pickup request or adjust the current filters.</p>
+    <p *ngIf="userRole !== 'user'">Adjust the filters to find available or assigned pickup work.</p>
+  </div>
+</section>

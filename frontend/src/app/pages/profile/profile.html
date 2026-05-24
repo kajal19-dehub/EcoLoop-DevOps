@@ -1,0 +1,163 @@
+<div class="profile-container">
+  <div class="profile-shell">
+    <div class="profile-header">
+      <div class="avatar" aria-label="Selected avatar">
+        {{ displayAvatar }}
+      </div>
+      <div>
+        <span class="eyebrow">My EcoLoop Profile</span>
+        <h2>{{ user?.fullName || 'EcoLoop Member' }}</h2>
+        <p class="role-badge">{{ user?.role | titlecase }}</p>
+      </div>
+      <button class="btn-edit" type="button" (click)="startEditing()" *ngIf="!isEditing">
+        <i class="fa-solid fa-pen"></i>
+        Edit Profile
+      </button>
+    </div>
+
+    <div class="message success" *ngIf="successMessage">{{ successMessage }}</div>
+    <div class="message error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+    <div class="profile-grid">
+      <section class="profile-card">
+        <div class="section-heading">
+          <h3>Account Details</h3>
+          <span>{{ profileCompletion }}% complete</span>
+        </div>
+
+        <div class="completion-track" aria-label="Profile completion">
+          <span [style.width.%]="profileCompletion"></span>
+        </div>
+
+        <form class="edit-form" *ngIf="isEditing" (ngSubmit)="saveProfile()">
+          <label>
+            Full name
+            <input name="fullName" [(ngModel)]="editProfile.fullName" required minlength="2">
+          </label>
+
+          <label>
+            Location
+            <input name="location" [(ngModel)]="editProfile.location" placeholder="City or neighborhood">
+          </label>
+
+          <label>
+            Phone
+            <input name="phone" [(ngModel)]="editProfile.phone" placeholder="Contact number">
+          </label>
+
+          <div class="avatar-picker" aria-label="Choose avatar">
+            <span>Choose avatar</span>
+            <div class="avatar-options">
+              <button
+                type="button"
+                *ngFor="let avatar of avatarChoices"
+                [class.selected]="editProfile.avatar === avatar"
+                (click)="selectAvatar(avatar)"
+                [attr.aria-label]="'Use avatar ' + avatar">
+                {{ avatar }}
+              </button>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn-save" type="submit" [disabled]="isSaving">
+              <i class="fa-solid fa-floppy-disk"></i>
+              {{ isSaving ? 'Saving...' : 'Save Changes' }}
+            </button>
+            <button class="btn-cancel" type="button" (click)="cancelEditing()">
+              Cancel
+            </button>
+          </div>
+        </form>
+
+        <div class="profile-details" *ngIf="!isEditing">
+          <div class="detail-item">
+            <span class="label"><i class="fa-solid fa-envelope"></i> Email</span>
+            <span class="value">{{ user?.email }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label"><i class="fa-solid fa-location-dot"></i> Location</span>
+            <span class="value">{{ user?.location || 'Not added' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label"><i class="fa-solid fa-phone"></i> Phone</span>
+            <span class="value">{{ user?.phone || 'Not added' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label"><i class="fa-solid fa-calendar"></i> Member Since</span>
+            <span class="value">{{ user?.createdAt | date }}</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="profile-card">
+        <div class="section-heading">
+          <h3>Impact Snapshot</h3>
+          <span>{{ user?.points || 0 }} points</span>
+        </div>
+
+        <div class="stats-grid">
+          <div>
+            <span>Total pickups</span>
+            <strong>{{ stats.totalPickups || 0 }}</strong>
+          </div>
+          <div>
+            <span>Recycled</span>
+            <strong>{{ stats.totalRecycled || 0 }} kg</strong>
+          </div>
+          <div>
+            <span>CO2 saved</span>
+            <strong>{{ stats.carbonSaved || 0 }} kg</strong>
+          </div>
+          <div>
+            <span>Rating</span>
+            <strong>{{ stats.rating || 0 }}/5</strong>
+          </div>
+        </div>
+
+        <div class="quick-actions">
+          <a routerLink="/create-pickup">
+            <i class="fa-solid fa-plus"></i>
+            New pickup
+          </a>
+          <a routerLink="/pickups">
+            <i class="fa-solid fa-list-check"></i>
+            View board
+          </a>
+        </div>
+      </section>
+    </div>
+
+    <section class="profile-card recent-card">
+      <div class="section-heading">
+        <h3>Recent Pickup Activity</h3>
+        <span>{{ recentPickups.length }} latest</span>
+      </div>
+
+      <div class="recent-list" *ngIf="recentPickups.length > 0; else noPickups">
+        <div class="recent-item" *ngFor="let pickup of recentPickups">
+          <div class="recent-icon"><i class="fa-solid fa-recycle"></i></div>
+          <div>
+            <strong>{{ pickup.wasteType | titlecase }}</strong>
+            <span>{{ pickup.pickupAddress || pickup.mapPlace }}</span>
+          </div>
+          <em>{{ pickup.status | titlecase }}</em>
+        </div>
+      </div>
+
+      <ng-template #noPickups>
+        <div class="empty-activity">
+          <i class="fa-solid fa-seedling"></i>
+          <p>No pickups yet. Start with your first recyclable waste request.</p>
+        </div>
+      </ng-template>
+    </section>
+
+    <div class="profile-actions">
+      <button class="btn-logout" type="button" (click)="logout()">
+        <i class="fa-solid fa-right-from-bracket"></i>
+        Logout
+      </button>
+    </div>
+  </div>
+</div>

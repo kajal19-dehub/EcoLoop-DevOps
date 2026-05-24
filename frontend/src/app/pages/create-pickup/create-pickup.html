@@ -1,0 +1,133 @@
+<section class="create-pickup-container">
+  <div class="form-shell">
+    <div class="request-panel">
+      <span class="eyebrow">New pickup request</span>
+      <h1>Give volunteers the details they need on the first pass.</h1>
+      <p>Clear material type, timing, address notes, and quantity information make pickups faster and easier to assign.</p>
+
+      <div class="checklist">
+        <div>
+          <i class="fa-solid fa-boxes-stacked"></i>
+          <span>Sort materials before pickup</span>
+        </div>
+        <div>
+          <i class="fa-solid fa-location-dot"></i>
+          <span>Add gate, floor, or landmark notes</span>
+        </div>
+        <div>
+          <i class="fa-solid fa-calendar-check"></i>
+          <span>Choose a date when someone is available</span>
+        </div>
+      </div>
+    </div>
+
+    <form class="pickup-form" [formGroup]="pickupForm" (ngSubmit)="onSubmit()">
+      <div class="form-header">
+        <h2>{{ userRole === 'admin' ? 'Create pickup for board' : 'Request details' }}</h2>
+        <a routerLink="/pickups">View existing requests</a>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="wasteType">Waste Type</label>
+          <select id="wasteType" formControlName="wasteType">
+            <option value="">Select waste type</option>
+            <option value="plastic">Plastic</option>
+            <option value="paper">Paper</option>
+            <option value="glass">Glass</option>
+            <option value="metal">Metal</option>
+            <option value="organic">Organic</option>
+            <option value="electronic">Electronic</option>
+            <option value="other">Other</option>
+          </select>
+          <span class="error-message" *ngIf="pickupForm.get('wasteType')?.invalid && pickupForm.get('wasteType')?.touched">
+            Waste type is required
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label for="preferredDate">Preferred Date</label>
+          <input type="date" id="preferredDate" formControlName="preferredDate" [min]="minDate">
+          <span class="error-message" *ngIf="pickupForm.get('preferredDate')?.invalid && pickupForm.get('preferredDate')?.touched">
+            Preferred date is required
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label for="quantity">Estimated Quantity</label>
+          <input id="quantity" formControlName="quantity" placeholder="Example: 3 bags / 8 kg">
+          <span class="error-message" *ngIf="pickupForm.get('quantity')?.invalid && pickupForm.get('quantity')?.touched">
+            Quantity is required
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label for="contactPhone">Contact Phone</label>
+          <input id="contactPhone" formControlName="contactPhone" placeholder="Optional phone for coordination">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="pickupAddress">Pickup Address</label>
+        <textarea
+          id="pickupAddress"
+          formControlName="pickupAddress"
+          placeholder="House number, street, area, landmark, and access instructions"
+          rows="4"
+        ></textarea>
+        <span class="error-message" *ngIf="pickupForm.get('pickupAddress')?.invalid && pickupForm.get('pickupAddress')?.touched">
+          Add a clear address with at least 10 characters
+        </span>
+      </div>
+
+      <div class="map-helper">
+        <div class="form-group">
+          <label for="mapPlace">Google Maps Search Place</label>
+          <input id="mapPlace" formControlName="mapPlace" placeholder="Society, landmark, or plus code">
+        </div>
+        <iframe
+          class="map-preview"
+          title="Google Maps pickup preview"
+          [src]="getGoogleMapsEmbedUrl()"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+        ></iframe>
+        <div class="map-actions">
+          <button type="button" (click)="useAddressForMap()">
+            <i class="fa-solid fa-location-crosshairs"></i>
+            Use address
+          </button>
+          <a [href]="getGoogleMapsUrl()" target="_blank" rel="noopener">
+            <i class="fa-solid fa-map-location-dot"></i>
+            Check on Google Maps
+          </a>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="description">Quantity and Notes</label>
+        <textarea
+          id="description"
+          formControlName="description"
+          placeholder="Example: 3 bags of plastic bottles, kept near the security desk"
+          rows="4"
+        ></textarea>
+      </div>
+
+      <div class="alert alert-success" *ngIf="successMessage">
+        <i class="fa-solid fa-circle-check"></i>
+        {{ successMessage }}
+      </div>
+
+      <div class="alert alert-error" *ngIf="errorMessage">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        {{ errorMessage }}
+      </div>
+
+      <button type="submit" class="btn-submit" [disabled]="pickupForm.invalid || isSubmitting">
+        <i class="fa-solid fa-paper-plane"></i>
+        {{ isSubmitting ? 'Submitting...' : (userRole === 'admin' ? 'Create Pickup' : 'Submit Request') }}
+      </button>
+    </form>
+  </div>
+</section>

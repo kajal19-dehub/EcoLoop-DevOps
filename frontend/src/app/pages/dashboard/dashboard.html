@@ -1,0 +1,135 @@
+<section class="dashboard-container">
+  <div class="dashboard-header">
+    <div>
+      <span class="eyebrow">{{ user?.role | titlecase }} Workspace</span>
+      <h1>Welcome back, {{ getFirstName() }}</h1>
+      <p>Monitor pickup flow, recycling impact, and the next actions that need attention.</p>
+    </div>
+    <button class="primary-action" routerLink="/create-pickup" *ngIf="user?.role === 'user'">
+      <i class="fa-solid fa-plus"></i>
+      Request pickup
+    </button>
+    <button class="primary-action" routerLink="/pickups" *ngIf="user?.role !== 'user'">
+      <i class="fa-solid fa-list-check"></i>
+      Review pickups
+    </button>
+  </div>
+
+  <div class="metric-grid">
+    <div class="metric-card" *ngFor="let item of summaryCards">
+      <div class="metric-icon" [class]="item.tone">
+        <i class="fa-solid" [ngClass]="item.icon"></i>
+      </div>
+      <span>{{ item.label }}</span>
+      <strong>{{ item.value }}</strong>
+      <p>{{ item.caption }}</p>
+    </div>
+  </div>
+
+  <div class="dashboard-layout">
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <span class="eyebrow">Operational queue</span>
+          <h2>Today at a glance</h2>
+        </div>
+        <a routerLink="/pickups">Open board</a>
+      </div>
+
+      <div class="timeline">
+        <div class="timeline-item" *ngFor="let activity of activityFeed">
+          <span class="timeline-dot" [class]="activity.tone"></span>
+          <div>
+            <h3>{{ activity.title }}</h3>
+            <p>{{ activity.detail }}</p>
+          </div>
+          <span>{{ activity.time }}</span>
+        </div>
+      </div>
+    </div>
+
+    <aside class="panel action-panel">
+      <span class="eyebrow">Next best action</span>
+      <h2>{{ nextAction.title }}</h2>
+      <p>{{ nextAction.description }}</p>
+      <button [routerLink]="nextAction.link">
+        <i class="fa-solid" [ngClass]="nextAction.icon"></i>
+        {{ nextAction.label }}
+      </button>
+
+      <div class="impact-note">
+        <i class="fa-solid fa-seedling"></i>
+        <div>
+          <strong>Impact tracker</strong>
+          <span>{{ impactNote }}</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="analysis-grid">
+    <article class="analysis-card" *ngFor="let section of analysisSections">
+      <div class="analysis-icon">
+        <i class="fa-solid" [ngClass]="section.icon"></i>
+      </div>
+      <span>{{ section.role }}</span>
+      <h3>{{ section.title }}</h3>
+      <strong>{{ section.metric }}</strong>
+      <p>{{ section.detail }}</p>
+    </article>
+  </div>
+
+  <section class="team-chat" id="team-chat">
+    <div class="chat-app-header">
+      <div class="chat-avatar">
+        <i class="fa-solid fa-recycle"></i>
+      </div>
+      <div>
+        <h2>EcoLoop Team Chat</h2>
+        <span>Admin, user, and volunteer coordination</span>
+      </div>
+      <button type="button" (click)="loadChat()" aria-label="Refresh chat">
+        <i class="fa-solid fa-rotate"></i>
+      </button>
+    </div>
+
+    <div class="team-chat-thread">
+      <div class="chat-date-pill">Today</div>
+
+      <div
+        class="team-chat-message"
+        *ngFor="let message of chatMessages"
+        [class.own]="isOwnMessage(message)"
+      >
+        <div class="message-bubble">
+          <div class="message-meta" *ngIf="!isOwnMessage(message)">
+            <strong>{{ message.senderName }}</strong>
+            <span [class]="message.senderRole">{{ message.senderRole | titlecase }}</span>
+          </div>
+          <p>{{ message.message }}</p>
+          <small>
+            {{ getMessageTime(message) }}
+            <i class="fa-solid fa-check-double" *ngIf="isOwnMessage(message)"></i>
+          </small>
+        </div>
+      </div>
+
+      <div class="team-chat-empty" *ngIf="chatMessages.length === 0">
+        <i class="fa-regular fa-comments"></i>
+        <p>No shared messages yet.</p>
+      </div>
+    </div>
+
+    <p class="chat-error" *ngIf="chatError">{{ chatError }}</p>
+
+    <div class="team-chat-compose">
+      <button type="button" class="compose-icon" aria-label="Add attachment">
+        <i class="fa-solid fa-paperclip"></i>
+      </button>
+      <input [(ngModel)]="chatDraft" placeholder="Message admins, users, and volunteers">
+      <button type="button" class="send-button" (click)="sendChatMessage()" aria-label="Send message">
+        <i class="fa-solid fa-paper-plane"></i>
+      </button>
+    </div>
+  </section>
+</section>
