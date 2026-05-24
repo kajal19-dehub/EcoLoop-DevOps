@@ -106,8 +106,8 @@ export class ProfileComponent implements OnInit {
     };
   }
 
-  logout() {
-    this.authService.logout();
-    this.router.navigate(['/']);
-  }
+logout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  this.router.navigate(['/']);
 }
