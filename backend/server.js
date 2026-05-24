@@ -8,8 +8,22 @@ const path = require('path');
 const app = express();
 
 // Enhanced Middleware
+const allowedOrigins = new Set([
+  'http://localhost:4200',
+  'http://127.0.0.1:4200',
+  'http://localhost:4300',
+  'http://127.0.0.1:4300'
+]);
+
 app.use(cors({
-  origin: 'http://localhost:4200',
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error(`CORS blocked origin: ${origin}`));
+  },
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -114,10 +128,23 @@ function initDB() {
 }
 
 // Read database with error handling
+function normalizeDB(db) {
+  return {
+    users: Array.isArray(db.users) ? db.users : [],
+    pickups: Array.isArray(db.pickups) ? db.pickups : [],
+    statistics: db.statistics || {},
+    rewards: Array.isArray(db.rewards) ? db.rewards : [],
+    notifications: Array.isArray(db.notifications) ? db.notifications : [],
+    chats: Array.isArray(db.chats) ? db.chats : [],
+    globalChats: Array.isArray(db.globalChats) ? db.globalChats : [],
+    reports: Array.isArray(db.reports) ? db.reports : []
+  };
+}
+
 function readDB() {
   try {
     const data = fs.readFileSync(DB_PATH, 'utf8');
-    return JSON.parse(data);
+    return normalizeDB(JSON.parse(data));
   } catch (error) {
     console.error('Error reading database:', error);
     // Restore from backup if available
@@ -126,10 +153,10 @@ function readDB() {
       const latestBackup = backups.sort().pop();
       const backupData = fs.readFileSync(path.join(BACKUP_PATH, latestBackup), 'utf8');
       console.log('📦 Restored from backup:', latestBackup);
-      return JSON.parse(backupData);
+      return normalizeDB(JSON.parse(backupData));
     }
     // Return empty database structure
-    return { users: [], pickups: [], statistics: {}, rewards: [], notifications: [] };
+    return normalizeDB({});
   }
 }
 
@@ -639,7 +666,7 @@ app.put('/api/auth/profile', protect, (req, res) => {
 // POST /api/pickups - Create pickup request
 app.post('/api/pickups', protect, authorize('user', 'admin'), (req, res) => {
   try {
-    const { wasteType, pickupAddress, preferredDate, description, quantity } = req.body;
+    const { wasteType, pickupAddress, preferredDate, description, quantity, mapPlace, contactPhone } = req.body;
 
     const errors = [];
     if (!wasteType) errors.push('Waste type is required');
@@ -669,6 +696,8 @@ app.post('/api/pickups', protect, authorize('user', 'admin'), (req, res) => {
       preferredDate: pickupDate.toISOString(),
       description: description || '',
       quantity: quantity || 'Not specified',
+      mapPlace: mapPlace || pickupAddress.trim(),
+      contactPhone: contactPhone || req.user.phone || '',
       status: 'pending',
       assignedVolunteer: null,
       images: [],
@@ -676,6 +705,8 @@ app.post('/api/pickups', protect, authorize('user', 'admin'), (req, res) => {
       completedAt: null,
       rating: null,
       feedback: null,
+      createdByRole: req.user.role,
+      reports: [],
       trackingNumber: 'ECO' + Date.now().toString().slice(-8)
     };
 
@@ -749,6 +780,8 @@ app.get('/api/pickups', protect, (req, res) => {
       const user = db.users.find(u => u._id === pickup.user);
       const volunteer = pickup.assignedVolunteer ? 
         db.users.find(u => u._id === pickup.assignedVolunteer) : null;
+      const chat = db.chats.filter(message => message.pickupId === pickup._id);
+      const reports = db.reports.filter(report => report.pickupId === pickup._id);
       
       return {
         ...pickup,
@@ -764,7 +797,9 @@ app.get('/api/pickups', protect, (req, res) => {
           fullName: volunteer.fullName,
           email: volunteer.email,
           avatar: volunteer.avatar
-        } : null
+        } : null,
+        chat,
+        reports
       };
     });
 
@@ -834,7 +869,7 @@ app.put('/api/pickups/:id/status', protect, authorize('volunteer', 'admin'), (re
     const { status, notes } = req.body;
     const pickupId = req.params.id;
 
-    const validStatuses = ['pending', 'accepted', 'in-progress', 'completed', 'cancelled'];
+    const validStatuses = ['pending', 'accepted', 'rejected', 'in-progress', 'completed', 'cancelled'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ 
         success: false, 
@@ -853,10 +888,32 @@ app.put('/api/pickups/:id/status', protect, authorize('volunteer', 'admin'), (re
 
     // Update status
     const oldStatus = pickup.status;
+    if (req.user.role === 'volunteer') {
+      const isAssignedVolunteer = pickup.assignedVolunteer === req.userId;
+      const canAcceptOrReject = pickup.status === 'pending' && ['accepted', 'rejected'].includes(status);
+      const canProgressAssigned = isAssignedVolunteer && ['in-progress', 'completed'].includes(status);
+
+      if (!canAcceptOrReject && !canProgressAssigned) {
+        return res.status(403).json({
+          success: false,
+          message: 'Volunteers can only accept/reject pending pickups or update their assigned pickups.'
+        });
+      }
+    }
+
     pickup.status = status;
+    pickup.statusNotes = notes || pickup.statusNotes || '';
     
     if (req.user.role === 'volunteer' && status === 'accepted') {
       pickup.assignedVolunteer = req.userId;
+    }
+
+    if (req.user.role === 'volunteer' && status === 'rejected') {
+      pickup.rejectedBy = Array.isArray(pickup.rejectedBy) ? pickup.rejectedBy : [];
+      if (!pickup.rejectedBy.includes(req.userId)) {
+        pickup.rejectedBy.push(req.userId);
+      }
+      pickup.assignedVolunteer = null;
     }
 
     if (status === 'completed') {
@@ -875,8 +932,9 @@ app.put('/api/pickups/:id/status', protect, authorize('volunteer', 'admin'), (re
       if (pickup.assignedVolunteer) {
         const volunteerIndex = db.users.findIndex(u => u._id === pickup.assignedVolunteer);
         if (volunteerIndex !== -1) {
-          db.users[volunteerIndex].stats.totalPickups++;
-          db.users[volunteerIndex].points += 20;
+          db.users[volunteerIndex].stats = db.users[volunteerIndex].stats || {};
+          db.users[volunteerIndex].stats.totalPickups = (db.users[volunteerIndex].stats.totalPickups || 0) + 1;
+          db.users[volunteerIndex].points = (db.users[volunteerIndex].points || 0) + 25;
         }
       }
     }
@@ -909,6 +967,159 @@ app.put('/api/pickups/:id/status', protect, authorize('volunteer', 'admin'), (re
   } catch (error) {
     console.error('❌ Update pickup error:', error);
     res.status(500).json({ success: false, message: 'Error updating pickup' });
+  }
+});
+
+// POST /api/pickups/:id/report - User reports a pickup issue
+app.post('/api/pickups/:id/report', protect, authorize('user', 'admin'), (req, res) => {
+  try {
+    const { reason, details } = req.body;
+    const db = readDB();
+    const pickup = db.pickups.find(p => p._id === req.params.id);
+
+    if (!pickup) {
+      return res.status(404).json({ success: false, message: 'Pickup not found' });
+    }
+
+    if (req.user.role === 'user' && pickup.user !== req.userId) {
+      return res.status(403).json({ success: false, message: 'You can only report your own pickups' });
+    }
+
+    if (!reason || reason.trim().length < 3) {
+      return res.status(400).json({ success: false, message: 'Please select or enter a report reason' });
+    }
+
+    const report = {
+      _id: generateId('report_'),
+      pickupId: pickup._id,
+      userId: req.userId,
+      userName: req.user.fullName,
+      reason: reason.trim(),
+      details: details || '',
+      status: 'open',
+      createdAt: new Date().toISOString()
+    };
+
+    db.reports.push(report);
+    pickup.reports = Array.isArray(pickup.reports) ? pickup.reports : [];
+    pickup.reports.push(report._id);
+
+    db.notifications.push({
+      _id: generateId('notif_'),
+      title: 'Pickup Reported',
+      message: `${req.user.fullName} reported pickup #${pickup.trackingNumber || pickup._id}`,
+      type: 'report',
+      forRoles: ['admin'],
+      read: false,
+      createdAt: new Date().toISOString()
+    });
+
+    writeDB(db);
+
+    res.status(201).json({
+      success: true,
+      message: 'Report submitted for admin review',
+      report
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error reporting pickup' });
+  }
+});
+
+// POST /api/pickups/:id/chat - Pickup-scoped chat between resident, volunteer, and admin
+app.post('/api/pickups/:id/chat', protect, (req, res) => {
+  try {
+    const { message } = req.body;
+    const db = readDB();
+    const pickup = db.pickups.find(p => p._id === req.params.id);
+
+    if (!pickup) {
+      return res.status(404).json({ success: false, message: 'Pickup not found' });
+    }
+
+    const isParticipant =
+      req.user.role === 'admin' ||
+      pickup.user === req.userId ||
+      pickup.assignedVolunteer === req.userId;
+
+    if (!isParticipant) {
+      return res.status(403).json({ success: false, message: 'Chat is available after assignment or for the resident/admin' });
+    }
+
+    if (!message || message.trim().length < 1) {
+      return res.status(400).json({ success: false, message: 'Message cannot be empty' });
+    }
+
+    const chatMessage = {
+      _id: generateId('chat_'),
+      pickupId: pickup._id,
+      senderId: req.userId,
+      senderName: req.user.fullName,
+      senderRole: req.user.role,
+      message: message.trim().slice(0, 500),
+      createdAt: new Date().toISOString()
+    };
+
+    db.chats.push(chatMessage);
+    writeDB(db);
+
+    res.status(201).json({
+      success: true,
+      message: 'Message sent',
+      chat: chatMessage
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error sending message' });
+  }
+});
+
+// GET /api/chat - Shared coordination chat for admins, users, and volunteers
+app.get('/api/chat', protect, (req, res) => {
+  try {
+    const db = readDB();
+    const messages = db.globalChats
+      .slice()
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+      .slice(-80);
+
+    res.json({
+      success: true,
+      data: messages
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error fetching chat messages' });
+  }
+});
+
+// POST /api/chat - Send a shared coordination message
+app.post('/api/chat', protect, (req, res) => {
+  try {
+    const { message } = req.body;
+
+    if (!message || message.trim().length < 1) {
+      return res.status(400).json({ success: false, message: 'Message cannot be empty' });
+    }
+
+    const db = readDB();
+    const chatMessage = {
+      _id: generateId('global_chat_'),
+      senderId: req.userId,
+      senderName: req.user.fullName,
+      senderRole: req.user.role,
+      message: message.trim().slice(0, 500),
+      createdAt: new Date().toISOString()
+    };
+
+    db.globalChats.push(chatMessage);
+    writeDB(db);
+
+    res.status(201).json({
+      success: true,
+      message: 'Message sent',
+      chat: chatMessage
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error sending chat message' });
   }
 });
 

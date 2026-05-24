@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ecoloop-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ecoloop-backend
+  template:
+    metadata:
+      labels:
+        app: ecoloop-backend
+    spec:
+      containers:
+        - name: ecoloop-backend
+          image: kajalll19/ecoloop-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5000
