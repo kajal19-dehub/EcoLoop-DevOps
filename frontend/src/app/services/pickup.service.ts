@@ -8,7 +8,7 @@ import { AuthService } from './auth.service';
   providedIn: 'root'
 })
 export class PickupService {
-  private apiUrl = 'http://localhost:5000/api/pickups';
+  private apiUrl = 'https://ecoloop-devops-production.up.railway.app';
 
   constructor(
     private http: HttpClient,

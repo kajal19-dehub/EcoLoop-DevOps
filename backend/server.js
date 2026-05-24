@@ -9,6 +9,7 @@ const app = express();
 
 // Enhanced Middleware
 const allowedOrigins = new Set([
+  'https://ecoloop-devops-production.up.railway.app',
   'http://localhost:4200',
   'http://127.0.0.1:4200',
   'http://localhost:4300',
