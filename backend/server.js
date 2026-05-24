@@ -1179,7 +1179,8 @@ app.get('/api/admin/dashboard', protect, authorize('admin'), (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'EcoLoop API is running on Railway 🚀'
+    message: 'EcoLoop API is running on Railway',
+    api: '/api'
   });
 });
 // ===== NOTIFICATIONS ROUTES =====
