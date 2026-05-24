@@ -8,7 +8,7 @@ import { Router } from '@angular/router';
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'https://ecoloop-devops-production.up.railway.app';
+private apiUrl = 'https://ecoloop-devops-production.up.railway.app/api/auth';
   private tokenKey = 'ecoloop_token';
   private refreshTokenKey = 'ecoloop_refresh_token';
   private userKey = 'ecoloop_user';
