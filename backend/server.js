@@ -1176,7 +1176,12 @@ app.get('/api/admin/dashboard', protect, authorize('admin'), (req, res) => {
     res.status(500).json({ success: false, message: 'Error fetching dashboard data' });
   }
 });
-
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'EcoLoop API is running on Railway 🚀'
+  });
+});
 // ===== NOTIFICATIONS ROUTES =====
 
 // GET /api/notifications
